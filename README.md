@@ -1,2 +1,2 @@
 # Orb42S
-Plus42 calculator for Orbiter
+Dear ImGui frontend of the plus42desktop calculator for Orbiter
