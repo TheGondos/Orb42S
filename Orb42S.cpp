@@ -398,6 +398,7 @@ DLLCLBK void InitModule(MODULEHANDLE hDLL)
         lcdHeight = rows * 8 + 10;
         lcdData = (uint32_t *) malloc(lcdWidth * lcdHeight * 4);
         surfLCD = oapiCreateSurface (lcdWidth, lcdHeight);
+        oapiSetSurfaceParam(surfLCD, SURFPARAM_FILTERING, SURFPARAM_FILTERING_NEAREST);
         for(int i = 0; i < lcdWidth * lcdHeight; i++)
             lcdData[i] = 0xFF98DECD;
 
