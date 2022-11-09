@@ -26,6 +26,8 @@
 #include "core_globals.h"
 #include "core_main.h"
 #include "shell.h"
+#include <unistd.h>
+#include <sys/time.h>
 
 class Orb42S;
 
@@ -162,7 +164,10 @@ private:
 class Orb42S : public GUIElement
 {
     public:
-    Orb42S (): GUIElement("Orb42S", "Orb42S") { running = false; }
+    Orb42S (): GUIElement("Orb42S", "Orb42S") {
+        running = false;
+        stopped = false;
+    }
     void Show() override;
     void DrawLCD();
 
@@ -184,6 +189,7 @@ class Orb42S : public GUIElement
     std::function<void(void)> cbRepeat;
     bool running;
     bool enqueued;
+    bool stopped;
 };
 
 void DrawAnnunciator(const char *txt, ImVec2 cp, float offset)
@@ -203,7 +209,8 @@ void Orb42S::DrawLCD()
     const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
     //oapiColourFill(surfLCD, 0xFF98DECD);
-    oapiUpdateSurface (surfLCD, 0, 0, lcdWidth, lcdHeight, (unsigned char *)lcdData);
+    if(!stopped)
+        oapiUpdateSurface (surfLCD, 0, 0, lcdWidth, lcdHeight, (unsigned char *)lcdData);
 
     oapiIncrTextureRef(surfLCD);
     ImVec2 curPos = ImGui::GetCursorPos();
@@ -216,16 +223,16 @@ void Orb42S::DrawLCD()
         DrawAnnunciator("SCROLL", curPos, 0);
     
     if(ann_shift)
-        DrawAnnunciator("SHIFT", curPos, 40);
+        DrawAnnunciator("SHIFT", curPos, 50);
 
     if(ann_run)
-        DrawAnnunciator("RUN", curPos, 60);
+        DrawAnnunciator("RUN", curPos, 70);
 
     if(ann_grad)
-        DrawAnnunciator("GRAD", curPos, 80);
+        DrawAnnunciator("G", curPos, 92);
 
     if(ann_rad)
-        DrawAnnunciator("RAD", curPos, 90);
+        DrawAnnunciator("RAD", curPos, 100);
 
     ImGui::PopStyleColor();
     ImGui::SetCursorPos(bck);
@@ -233,6 +240,13 @@ void Orb42S::DrawLCD()
 
 void Orb42S::KeyPressed(int key)
 {
+    if(stopped) {
+        if(key == KEY_EXIT) {
+            stopped = false;
+            core_powercycle();
+        }
+        return;
+    }
     if (timer3.IsRunning() && key != 28 /* SHIFT */) {
         timer3.Disarm();
         core_timeout3(false);
@@ -260,6 +274,7 @@ void Orb42S::KeyPressed(int key)
 }
 void Orb42S::KeyReleased()
 {
+    if(stopped) return;
     timer1.Disarm();
     timer2.Disarm();
     timerRepeat.Disarm();
@@ -282,16 +297,17 @@ void Orb42S::HandleShortCuts()
 
 void Orb42S::Show()
 {
-    if(running) {
-        bool dummy1;
-        int dummy2;
-        running = core_keydown(0, &dummy1, &dummy2);
+    if(!stopped) {
+        if(running) {
+            bool dummy1;
+            int dummy2;
+            running = core_keydown(0, &dummy1, &dummy2);
+        }
+        timer1.Check();
+        timer2.Check();
+        timer3.Check();
+        timerRepeat.Check();
     }
-    timer1.Check();
-    timer2.Check();
-    timer3.Check();
-    timerRepeat.Check();
-
     if(!show) return;
 	if(ImGui::Begin("Orb42S+", &show)) {
         HandleShortCuts();
@@ -440,4 +456,59 @@ void shell_blitter(const char *bits, int bytesperline, int x, int y,
 
 void shell_request_timeout3(int delay) {
     g_calculator->timer3.Arm(delay, [](){g_calculator->running = core_timeout3(true);});
+}
+
+const char *shell_platform() {
+    return "Orb42S";
+}
+
+void shell_beeper(int frequency, int duration) {
+    // TODO: call XRSound
+    shell_delay(duration);
+}
+void shell_delay(int duration) {
+    // TODO: can't sleep here because it would pause the sim...
+}
+
+bool shell_wants_cpu() {return true;}
+
+void shell_request_display_size(int rows, int cols) {}
+
+uint8 shell_get_mem() {
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    return pages * page_size;
+}
+
+bool shell_low_battery() {
+    return false;
+}
+
+void shell_powerdown() {
+    oapiColourFill(surfLCD, 0xFF98DECD);
+    g_calculator->stopped = true;
+}
+
+int8 shell_random_seed() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+}
+
+uint4 shell_milliseconds() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (uint4) (tv.tv_sec * 1000L + tv.tv_usec / 1000);
+}
+
+void shell_print(const char *text, int length,
+                 const char *bits, int bytesperline,
+                 int x, int y, int width, int height) {}
+
+void shell_message(const char *message) {
+    oapiAddNotification(OAPINOTIF_INFO, "Orb42S", message);
+}
+
+void shell_log(const char *message) {
+    oapiWriteLog(message);
 }
