@@ -28,6 +28,7 @@
 #include "shell.h"
 #include <unistd.h>
 #include <sys/time.h>
+#include <functional>
 
 class Orb42S;
 
