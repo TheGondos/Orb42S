@@ -1,3 +1,3 @@
 [submodule "plus42desktop"]
 	path = plus42desktop
-	url = git@github.com:TheGondos/plus42desktop.git
+	url = https://github.com/TheGondos/plus42desktop.git
