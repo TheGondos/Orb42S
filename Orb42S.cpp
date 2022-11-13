@@ -372,19 +372,6 @@ void OpenDialog (void *context)
 	oapiOpenDialog((Orb42S *)context);
 }
 
-const ImWchar *GetGlyphRanges()
-{
-    static const ImWchar ranges[] =
-    {
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x0393, 0x03C2, // Greek characters
-		0x221A, 0x221A, // √
-		0x222B, 0x222B, // ∫
-		0x2260, 0x2264, // ≠ ≤ ≥
-        0,
-    };
-    return &ranges[0];
-}
 
 DLLCLBK void InitModule(MODULEHANDLE hDLL)
 {
@@ -406,10 +393,16 @@ DLLCLBK void InitModule(MODULEHANDLE hDLL)
         core_repaint_display(rows, cols, 0);
         core_powercycle();
 
+        // search small font (size 11)
         ImGuiIO& io = ImGui::GetIO();
-        ImFontConfig config;
-
-        fontAnnunciators = io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 11.0f, &config, GetGlyphRanges());
+        for(auto f: io.Fonts->Fonts) {
+            if(f->FontSize == 11) {
+                fontAnnunciators = f;
+            }
+        }
+        if(fontAnnunciators == nullptr) {
+            fontAnnunciators = io.Fonts->Fonts[0];
+        }
     }
 
 	ccmd = oapiRegisterCustomCmd (
