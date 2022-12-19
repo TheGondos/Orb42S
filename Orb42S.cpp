@@ -428,6 +428,7 @@ bool shell_clk24() {return true;}
 void shell_set_skin_mode(int mode){}
 void shell_annunciators(int updn, int shf, int prt, int run, int g, int rad)
 {
+    if(!g_calculator) return;
     if(updn != -1) g_calculator->ann_ud    = updn;
     if(shf  != -1) g_calculator->ann_shift = shf;
     if(prt  != -1) g_calculator->ann_print = prt;
